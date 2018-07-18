@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[2]:
+# In[149]:
 
 
 import pandas as pd
@@ -25,13 +25,13 @@ df_events = pd.read_csv('data_prepared/event.csv', sep=',').replace(np.nan, '', 
 df_events
 
 
-# In[4]:
+# In[3]:
 
 
 df_cups
 
 
-# In[5]:
+# In[4]:
 
 
 plt.figure(figsize=(14,7))
@@ -48,7 +48,7 @@ plt.xlabel("")
 plt.show()
 
 
-# In[6]:
+# In[5]:
 
 
 plt.figure(figsize=(9,6))
@@ -56,7 +56,7 @@ plt.figure(figsize=(9,6))
 df_players.groupby(['Player Name']).size().sort_values(ascending=False).nlargest(n=10).plot.bar()
 
 
-# In[7]:
+# In[6]:
 
 
 # data consistency not sufficient for this calculation as player names are not unique
@@ -70,24 +70,26 @@ df_players.groupby(['Player Name']).size().sort_values(ascending=False).nlargest
 # 
 # We first need some preliminary work. How many matches were played at all? How many of them were won by one team?
 
-# In[144]:
+# In[7]:
 
 
 num_matches_total = len(df_events.groupby('MatchID').mean())
 num_matches_decision = len(df_events.loc[(df_events['HomeTeamWins'] == True) | (df_events['AwayTeamWins'] == True)].groupby('MatchID').mean())
 num_matches_tie = len(df_events.loc[(df_events['HomeTeamWins'] == False) & (df_events['AwayTeamWins'] == False)].groupby('MatchID').mean())
 
-print("Total matches: %g"% num_matches_total)
-print("Total matches: %g"% num_matches_decision)
-print("Total matches: %g"% num_matches_no_decision)
+print("num_matches_total: %g"% num_matches_total)
+print("num_matches_decision: %g"% num_matches_decision)
+print("num_matches_tie: %g"% num_matches_tie)
 
-print("Total matches: %.2f"% (num_matches_decision/num_matches_total*100))
-print("Total matches: %.2f"% (num_matches_no_decision/num_matches_total*100))
+print("proportion decision: %.2f"% (num_matches_decision/num_matches_total*100))
+print("proportion no decision: %.2f"% (num_matches_tie/num_matches_total*100))
 
 
 # ## Yellow and Red Cards Statistics
+# 
+# On average 2.68 yellow cards, 0.14 red cards and 0.06 red cards for second yellow are given during a match.
 
-# In[143]:
+# In[8]:
 
 
 f = {
@@ -97,14 +99,128 @@ f = {
 df_cards = df_events.loc[(df_events["EventType"] == "Y") | (df_events["EventType"] == "R") | (df_events["EventType"] == "RSY")]
 df_cards = df_cards.groupby(["EventType"]).agg(f)
 df_cards.columns = ['Total']
-df_cards.assign(AvgPerGame = lambda x : x.Total/num_matches_total)
+df_cards.assign(AvgPerMatch = lambda x : x.Total/num_matches_total)
+
+
+# ## Event minutes of red and yellow cards
+# 
+# In this section we want to find out when most yellow and red cards are given. As expected, red cards tend to be given later.
+
+# In[74]:
+
+
+df_events[['EventMinute']] = df_events[['EventMinute']].apply(pd.to_numeric)
+#df_events.loc[(df_events['EventType'] == "Y") & (int(df_events['EventMinute']) < 20)]
+minutes_yellow = df_events[df_events.EventType == "Y"].EventMinute.values
+minutes_red = df_events[df_events.EventType == "R"].EventMinute.values
+minutes_red_2nd_yellow = df_events[df_events.EventType == "RSY"].EventMinute.values
+
+plt.figure(figsize=(12,6))
+
+ax = plt.subplot(131)
+
+ax.boxplot(minutes_yellow)
+plt.title("Yellow Cards")
+
+ax = plt.subplot(132)
+
+ax.boxplot(minutes_red)
+plt.title("Red Cards")
+
+ax = plt.subplot(133)
+
+ax.boxplot(minutes_red_2nd_yellow)
+plt.title("Red Cards (By 2nd Yellow)")
+
+plt.show()
+
+
+# # Fairest team
+# 
+# In this section we want to find out which team is given the fewest yellow cards per match on average. First we have to find out how many yellow cards a team was awarded. We have to create to dataframes as teams appear either as home or away team.
+
+# In[184]:
+
+
+df_yellow_cards = df_events[df_events.EventType == "Y"]
+
+df_yellow_cards_home = df_yellow_cards[df_yellow_cards.EventOfHomeTeam == True][["Home Team Name", "EventType"]]
+df_yellow_cards_home = df_yellow_cards_home.groupby("Home Team Name").count().reset_index()
+df_yellow_cards_home.columns = ['Team', 'YellowCardsHome']
+
+df_yellow_cards_away = df_yellow_cards[df_yellow_cards.EventOfHomeTeam == False][["Away Team Name", "EventType"]]
+df_yellow_cards_away = df_yellow_cards_away.groupby("Away Team Name").count().reset_index()
+df_yellow_cards_away.columns = ['Team', 'YellowCardsAway']
+
+df_yellow_cards_count = pd.merge(df_yellow_cards_home, df_yellow_cards_away).fillna(0)
+df_yellow_cards_count['YellowCardsTotal'] = df_yellow_cards_count.YellowCardsHome+df_yellow_cards_count.YellowCardsAway
+df_yellow_cards_count
+
+
+# Now we need the amount of matches per team to finally compute the average amount of yellow cards per match per team.
+
+# In[192]:
+
+
+df_home_matches = df_matches[["Home Team Name"]]
+df_home_matches["MatchesCount1"] = 1
+df_home_matches = df_home_matches.groupby("Home Team Name").count().reset_index()
+df_home_matches.columns = ['Team', 'MatchesHome']
+
+df_away_matches = df_matches[["Away Team Name"]]
+df_away_matches["MatchesCount2"] = 1
+df_away_matches = df_away_matches.groupby("Away Team Name").count().reset_index()
+df_away_matches.columns = ['Team', 'MatchesAway']
+
+df_matches_count = pd.merge(df_home_matches, df_away_matches).fillna(0)
+df_matches_count['MatchesTotal'] = df_matches_count.MatchesHome+df_matches_count.MatchesAway
+
+df_yellow_cards_teams = pd.merge(df_yellow_cards_count, df_matches_count)
+df_yellow_cards_teams['AvgYellowPerMatch'] = df_yellow_cards_teams.YellowCardsTotal/df_yellow_cards_teams.MatchesTotal
+#just to get team as index
+df_yellow_cards_teams = df_yellow_cards_teams.groupby("Team").mean()
+df_yellow_cards_teams
+
+
+# We see that some teams with only very few matches appear in both lists. These could be statistical outliers.
+
+# In[202]:
+
+
+plt.figure(figsize=(12,6))
+
+ax = plt.subplot(121)
+df_yellow_cards_teams["AvgYellowPerMatch"].sort_values(ascending=False).nlargest(n=10).plot.bar()
+plt.title("Teams with most yellow cards")
+
+ax = plt.subplot(122)
+df_yellow_cards_teams["AvgYellowPerMatch"].sort_values(ascending=True).nsmallest(n=10).plot.bar()
+plt.title("Fairest Teams")
+
+plt.show()
+
+
+# Based on the previous observation we restrict ourselves to teams with at least 30 matches which are in total 21 teams. Germany is on rank 3.
+
+# In[220]:
+
+
+df_yellow_cards_reg_teams = df_yellow_cards_teams[df_yellow_cards_teams.MatchesTotal > 30]
+print(len(df_yellow_cards_reg_teams))
+
+plt.figure(figsize=(12,6))
+
+df_yellow_cards_reg_teams["AvgYellowPerMatch"].sort_values(ascending=False).plot.bar()
+plt.title("Teams with most yellow cards")
+
+plt.show()
 
 
 # ## Winners play fair!?
 # 
 # Whether or not a game is a tie does not have an effect on the amount of red or yellow cards. However, if it is not a tie the winner are given less yellow and red cards.
 
-# In[105]:
+# In[9]:
 
 
 avg_yellow_of_winner = len(df_events.loc[(df_events['EventOfWinner'] == True) & (df_events['EventType'] == 'Y')])/num_matches_decision
@@ -116,8 +232,8 @@ avg_red_of_loser = len(df_events.loc[(df_events['EventOfLoser'] == True) & ((df_
 avg_yellow_decided_match = avg_yellow_of_winner+avg_yellow_of_loser
 avg_red_decided_match = avg_red_of_winner+avg_red_of_loser
 
-avg_yellow_tie_match = len(df_events.loc[(df_events['HomeTeamWins'] == False) & (df_events['AwayTeamWins'] == False) & (df_events['EventType'] == 'Y')])/num_matches_no_decision
-avg_red_tie_match = len(df_events.loc[(df_events['HomeTeamWins'] == False) & (df_events['AwayTeamWins'] == False) & ((df_events['EventType'] == 'R') | (df_events['EventType'] == 'RSY'))])/num_matches_no_decision
+avg_yellow_tie_match = len(df_events.loc[(df_events['HomeTeamWins'] == False) & (df_events['AwayTeamWins'] == False) & (df_events['EventType'] == 'Y')])/num_matches_tie
+avg_red_tie_match = len(df_events.loc[(df_events['HomeTeamWins'] == False) & (df_events['AwayTeamWins'] == False) & ((df_events['EventType'] == 'R') | (df_events['EventType'] == 'RSY'))])/num_matches_tie
 
 print("avg_yellow_of_winner: %.2f"% (avg_yellow_of_winner))
 print("avg_yellow_of_loser: %.2f"% (avg_yellow_of_loser))
@@ -154,18 +270,6 @@ ax.bar(ind + width, red_cards, width, color='r')
 plt.show()
 
 
-# ## Minute cards awarded
-
-# In[ ]:
-
-
-#df_events[df_events.EventType == "Y"].EventMinute.mean()
-
-plt.hist(df_events[df_events.EventType == "Y"].EventMinute, 50, normed=1, facecolor='green', alpha=0.75)
-
-plt.show()
-
-
 # # Predict Fouls
 # In this section we trained a model to predict the amount of yellow cards given in a match.
 # 
@@ -197,7 +301,7 @@ plt.show()
 # Additionally, attendance must be a numeric data type
 # 
 
-# In[8]:
+# In[10]:
 
 
 df_events_ohe = pd.concat([df_events, pd.get_dummies(df_events['EventType'])], axis=1)
@@ -213,7 +317,7 @@ df_events_ohe
 
 # Perform a group by to get sum of yellow cards
 
-# In[9]:
+# In[11]:
 
 
 f = {'HourGameStart':['mean'],
@@ -244,7 +348,7 @@ df_events_grp.columns = df_events_grp.columns.get_level_values(0)
 df_events_grp
 
 
-# In[10]:
+# In[12]:
 
 
 df_events_grp.columns
@@ -252,7 +356,7 @@ df_events_grp.columns
 
 # We simply use MinMaxScaler as preprocessing
 
-# In[11]:
+# In[13]:
 
 
 from sklearn.preprocessing import MinMaxScaler
@@ -262,7 +366,7 @@ df_events_grp[['HourGameStart','Year','GoalsTotal','GoalDifference','GoalDiffere
 
 # Linear regression is used to predict the amount of yellow cards for the test data. The MSE is fairly lower than the one of the baseline model. The coefficient of determination (R squared, amount of explained variance) is 0.5 indicating a moderate model performance. Keep in mind that R squared values depend on the amount of features used (strictly increasing on number of features).
 
-# In[12]:
+# In[14]:
 
 
 from sklearn.model_selection import train_test_split
@@ -314,7 +418,7 @@ print('BASE: Variance score: %.2f' % r2_score(y_test, y_base_pred))
 # 
 # All together F-statistic prob is low enough. Hence, all variables together can be considered significant.
 
-# In[13]:
+# In[15]:
 
 
 import statsmodels.api as sm
@@ -334,7 +438,7 @@ print(est2.summary())
 # 
 # The correlation with substitutions is not obvious. 
 
-# In[14]:
+# In[16]:
 
 
 from scipy.stats.stats import pearsonr  
@@ -347,7 +451,7 @@ print(pearsonr(df_events_grp['IH'],Y)) # half time substitutions
 
 # The correlation with year and substitutions can also be observed in a scatter plot. For penalty this does plot does not make sense as it is a binary decision. 
 
-# In[15]:
+# In[17]:
 
 
 import numpy as np
@@ -367,7 +471,7 @@ plt.plot(df_events_grp['I'],Y, "o")
 # 
 # But first, why not remove the unnecessary features and make the model more robust?
 
-# In[16]:
+# In[18]:
 
 
 X2 = df_events_grp.loc[:, ['Year', 'Penalty', 'IH', 'I']]
@@ -405,7 +509,7 @@ print('BASE: Variance score: %.2f' % r2_score(y_test2, y_base_pred))
 # ## Attempt 1: Regularization
 # As mentioned above, regularization fails to improve the linear model. In this case we only tried ridge regression. One could also employ lasso regression etc. to regularize which have the effect of feature selection or lower variable scale respectively.
 
-# In[17]:
+# In[19]:
 
 
 from sklearn.linear_model import Ridge
@@ -423,7 +527,7 @@ print('REGULARIZATION: Variance score: %.2f' % r2_score(y_test, y_pred))
 # ## Attempt 2a: Try a decision tree
 # Just another regression model. Leafes of the tree contain values for the specific subspace.
 
-# In[18]:
+# In[20]:
 
 
 from sklearn.tree import DecisionTreeRegressor
@@ -456,7 +560,7 @@ print('DECISION TREE 2: Variance score: %.2f' % r2_score(y_test, y_pred_2))
 # 
 # Sounds fancy but actually just a vanilla multilayer perceptron with only two layers.
 
-# In[19]:
+# In[21]:
 
 
 from sklearn.neural_network import MLPRegressor
@@ -479,7 +583,7 @@ print('NEURAL NETWORK: Variance score: %.2f' % r2_score(y_test, y_pred))
 # ## Attempt 3: Add team as one hot encoding
 # We hot encode the teams of the specific match and hope to increase the accuracy
 
-# In[20]:
+# In[22]:
 
 
 df_teams_ohe = (pd.get_dummies(df_events['Home Team Initials'])+pd.get_dummies(df_events['Away Team Initials'])).fillna(value=0)
@@ -490,7 +594,7 @@ df_fouls.drop(['MatchID'], 1,inplace=True)
 df_fouls
 
 
-# In[21]:
+# In[23]:
 
 
 from sklearn.preprocessing import MinMaxScaler
@@ -500,7 +604,7 @@ df_fouls[['HourGameStart','Year','GoalsTotal','GoalDifference','GoalDifferenceHa
 
 # Unfortunately, adding the team did not improve the model performance. Probably due to shortage of data.
 
-# In[22]:
+# In[24]:
 
 
 from sklearn.model_selection import train_test_split
