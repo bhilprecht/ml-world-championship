@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[149]:
+# In[1]:
 
 
 import pandas as pd
@@ -106,7 +106,7 @@ df_cards.assign(AvgPerMatch = lambda x : x.Total/num_matches_total)
 # 
 # In this section we want to find out when most yellow and red cards are given. As expected, red cards tend to be given later.
 
-# In[74]:
+# In[9]:
 
 
 df_events[['EventMinute']] = df_events[['EventMinute']].apply(pd.to_numeric)
@@ -139,7 +139,7 @@ plt.show()
 # 
 # In this section we want to find out which team is given the fewest yellow cards per match on average. First we have to find out how many yellow cards a team was awarded. We have to create to dataframes as teams appear either as home or away team.
 
-# In[184]:
+# In[10]:
 
 
 df_yellow_cards = df_events[df_events.EventType == "Y"]
@@ -159,7 +159,7 @@ df_yellow_cards_count
 
 # Now we need the amount of matches per team to finally compute the average amount of yellow cards per match per team.
 
-# In[192]:
+# In[11]:
 
 
 df_home_matches = df_matches[["Home Team Name"]]
@@ -184,7 +184,7 @@ df_yellow_cards_teams
 
 # We see that some teams with only very few matches appear in both lists. These could be statistical outliers.
 
-# In[202]:
+# In[12]:
 
 
 plt.figure(figsize=(12,6))
@@ -202,7 +202,7 @@ plt.show()
 
 # Based on the previous observation we restrict ourselves to teams with at least 30 matches which are in total 21 teams. Germany is on rank 3.
 
-# In[220]:
+# In[13]:
 
 
 df_yellow_cards_reg_teams = df_yellow_cards_teams[df_yellow_cards_teams.MatchesTotal > 30]
@@ -220,7 +220,7 @@ plt.show()
 # 
 # Whether or not a game is a tie does not have an effect on the amount of red or yellow cards. However, if it is not a tie the winner are given less yellow and red cards.
 
-# In[9]:
+# In[14]:
 
 
 avg_yellow_of_winner = len(df_events.loc[(df_events['EventOfWinner'] == True) & (df_events['EventType'] == 'Y')])/num_matches_decision
@@ -301,7 +301,7 @@ plt.show()
 # Additionally, attendance must be a numeric data type
 # 
 
-# In[10]:
+# In[31]:
 
 
 df_events_ohe = pd.concat([df_events, pd.get_dummies(df_events['EventType'])], axis=1)
@@ -317,7 +317,7 @@ df_events_ohe
 
 # Perform a group by to get sum of yellow cards
 
-# In[11]:
+# In[32]:
 
 
 f = {'HourGameStart':['mean'],
@@ -348,7 +348,7 @@ df_events_grp.columns = df_events_grp.columns.get_level_values(0)
 df_events_grp
 
 
-# In[12]:
+# In[33]:
 
 
 df_events_grp.columns
@@ -356,7 +356,7 @@ df_events_grp.columns
 
 # We simply use MinMaxScaler as preprocessing
 
-# In[13]:
+# In[34]:
 
 
 from sklearn.preprocessing import MinMaxScaler
@@ -365,8 +365,14 @@ df_events_grp[['HourGameStart','Year','GoalsTotal','GoalDifference','GoalDiffere
 
 
 # Linear regression is used to predict the amount of yellow cards for the test data. The MSE is fairly lower than the one of the baseline model. The coefficient of determination (R squared, amount of explained variance) is 0.5 indicating a moderate model performance. Keep in mind that R squared values depend on the amount of features used (strictly increasing on number of features).
+# 
+# From Wiki (R squared is the amount of variance explained by the model)
+# \begin{align}
+# \mathit{R}^2 = \frac{\text{ESS}}{\text{TSS}}=
+# \frac{\displaystyle\sum\nolimits \left(\hat{y}_i- \overline{y}\right)^2}{\displaystyle\sum\nolimits \left(y_i - \overline{y}\right)^2}
+# \end{align}
 
-# In[14]:
+# In[35]:
 
 
 from sklearn.model_selection import train_test_split
@@ -414,11 +420,11 @@ print('BASE: Variance score: %.2f' % r2_score(y_test, y_base_pred))
 # - p values: probability that coefficient is zero
 # - F statistic: is the group of features significant?
 # 
-# We can derive that only x2, x14, x15, x16 are significant, i.e. Year, Penalty, I (=Amount of substitutions) and IH (=Amount of half time substitutions). 
+# We can derive that only x2, x15, x16 are significant, i.e. Year, I (=Amount of substitutions) and IH (=Amount of half time substitutions) by observing the p values. Alternatively, this can be concluded by interpreting the confidence intervals spanning over zero for all other variables.
 # 
 # All together F-statistic prob is low enough. Hence, all variables together can be considered significant.
 
-# In[15]:
+# In[36]:
 
 
 import statsmodels.api as sm
@@ -434,24 +440,21 @@ print(est2.summary())
 # 
 # The positive correlation with year suggests that nowadays more yellow cards are given. This might be due to stricter rules or less fair play.
 # 
-# Note that penalty does not include penalties due to red cards but only penalties after extra time to decide the game. A positive correlation could be due to the fact that such matches take longer and are very close games.
-# 
 # The correlation with substitutions is not obvious. 
 
-# In[16]:
+# In[39]:
 
 
 from scipy.stats.stats import pearsonr  
 
 print(pearsonr(df_events_grp['Year'],Y)) # equivalent to: print(pearsonr(X[:,1],Y)) because not sensitive to scaling
-print(pearsonr(df_events_grp['Penalty'],Y))
 print(pearsonr(df_events_grp['I'],Y)) # substitutions
 print(pearsonr(df_events_grp['IH'],Y)) # half time substitutions
 
 
 # The correlation with year and substitutions can also be observed in a scatter plot. For penalty this does plot does not make sense as it is a binary decision. 
 
-# In[17]:
+# In[40]:
 
 
 import numpy as np
@@ -471,7 +474,7 @@ plt.plot(df_events_grp['I'],Y, "o")
 # 
 # But first, why not remove the unnecessary features and make the model more robust?
 
-# In[18]:
+# In[41]:
 
 
 X2 = df_events_grp.loc[:, ['Year', 'Penalty', 'IH', 'I']]
@@ -509,7 +512,7 @@ print('BASE: Variance score: %.2f' % r2_score(y_test2, y_base_pred))
 # ## Attempt 1: Regularization
 # As mentioned above, regularization fails to improve the linear model. In this case we only tried ridge regression. One could also employ lasso regression etc. to regularize which have the effect of feature selection or lower variable scale respectively.
 
-# In[19]:
+# In[42]:
 
 
 from sklearn.linear_model import Ridge
@@ -524,10 +527,10 @@ print("REGULARIZATION: Mean squared error: %.2f"
 print('REGULARIZATION: Variance score: %.2f' % r2_score(y_test, y_pred))
 
 
-# ## Attempt 2a: Try a decision tree
+# ## Attempt 2a: Try a regression tree
 # Just another regression model. Leafes of the tree contain values for the specific subspace.
 
-# In[20]:
+# In[43]:
 
 
 from sklearn.tree import DecisionTreeRegressor
@@ -560,7 +563,7 @@ print('DECISION TREE 2: Variance score: %.2f' % r2_score(y_test, y_pred_2))
 # 
 # Sounds fancy but actually just a vanilla multilayer perceptron with only two layers.
 
-# In[21]:
+# In[44]:
 
 
 from sklearn.neural_network import MLPRegressor
@@ -583,7 +586,7 @@ print('NEURAL NETWORK: Variance score: %.2f' % r2_score(y_test, y_pred))
 # ## Attempt 3: Add team as one hot encoding
 # We hot encode the teams of the specific match and hope to increase the accuracy
 
-# In[22]:
+# In[45]:
 
 
 df_teams_ohe = (pd.get_dummies(df_events['Home Team Initials'])+pd.get_dummies(df_events['Away Team Initials'])).fillna(value=0)
@@ -594,7 +597,7 @@ df_fouls.drop(['MatchID'], 1,inplace=True)
 df_fouls
 
 
-# In[23]:
+# In[46]:
 
 
 from sklearn.preprocessing import MinMaxScaler
@@ -604,7 +607,7 @@ df_fouls[['HourGameStart','Year','GoalsTotal','GoalDifference','GoalDifferenceHa
 
 # Unfortunately, adding the team did not improve the model performance. Probably due to shortage of data.
 
-# In[24]:
+# In[47]:
 
 
 from sklearn.model_selection import train_test_split
