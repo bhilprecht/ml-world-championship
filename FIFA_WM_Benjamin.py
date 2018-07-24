@@ -1,6 +1,8 @@
 
 # coding: utf-8
 
+# # FIFA World Cup - Benjamin  
+
 # In[1]:
 
 
@@ -8,7 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-plt.rcParams.update({'font.size': 15})
+plt.rcParams.update({'font.size': 16})
 
 #G=Goal, OG=Own Goal, Y=Yellow Card, R=Red Card, SY = Red Card by second yellow, P=Penalty, MP=Missed Penalty, I = Substitution In, O=Substitute Out, IH= In half time?
 
@@ -22,16 +24,22 @@ df_events = pd.read_csv('data_prepared/event.csv', sep=',').replace(np.nan, '', 
 # In[2]:
 
 
-df_events
+df_matches
 
 
 # In[3]:
 
 
-df_cups
+df_players
 
 
 # In[4]:
+
+
+df_events
+
+
+# In[5]:
 
 
 plt.figure(figsize=(14,7))
@@ -48,15 +56,16 @@ plt.xlabel("")
 plt.show()
 
 
-# In[5]:
+# In[6]:
 
 
 plt.figure(figsize=(9,6))
 
 df_players.groupby(['Player Name']).size().sort_values(ascending=False).nlargest(n=10).plot.bar()
+print(df_players.groupby(['Player Name']).size().sort_values(ascending=False).nlargest(n=10))
 
 
-# In[6]:
+# In[7]:
 
 
 # data consistency not sufficient for this calculation as player names are not unique
@@ -70,7 +79,7 @@ df_players.groupby(['Player Name']).size().sort_values(ascending=False).nlargest
 # 
 # We first need some preliminary work. How many matches were played at all? How many of them were won by one team?
 
-# In[7]:
+# In[8]:
 
 
 num_matches_total = len(df_events.groupby('MatchID').mean())
@@ -89,7 +98,7 @@ print("proportion no decision: %.2f"% (num_matches_tie/num_matches_total*100))
 # 
 # On average 2.68 yellow cards, 0.14 red cards and 0.06 red cards for second yellow are given during a match.
 
-# In[8]:
+# In[9]:
 
 
 f = {
@@ -102,11 +111,36 @@ df_cards.columns = ['Total']
 df_cards.assign(AvgPerMatch = lambda x : x.Total/num_matches_total)
 
 
+# The match with most cards was Portugal vs. Greece in 2006's Round of 16 with 20 cards. 
+
+# In[10]:
+
+
+f = {
+     'Attendance':'count' # again, we could do this with any attribute
+    }
+
+df_cards = df_events.loc[(df_events["EventType"] == "Y") | (df_events["EventType"] == "R") | (df_events["EventType"] == "RSY")]
+df_cards = df_cards.groupby(['MatchID','Stage','Year','Home Team Name', 'Away Team Name', 'Home Team Goals', 'Away Team Goals']).agg(f).reset_index()
+df_cards.columns = ['Match ID', 'Stage','Year', 'Home Team Name', 'Away Team Name', 'Home Team Goals', 'Away Team Goals', 'Cards']
+df_cards.sort_values(by=['Cards'], ascending=False)
+
+
+# During the match, 4 players were given a red card by second yellow. 
+
+# In[11]:
+
+
+df_events.loc[(df_events["MatchID"] == 97410052.0) & (df_events["EventType"] != "") & (df_events["EventType"] != "I")][['Team Initials','Player Name','EventMinute','EventType']]
+
+#[df_events.MatchID == 97410052][['EventOfHomeTeam','EventType','Player Name']]
+
+
 # ## Event minutes of red and yellow cards
 # 
 # In this section we want to find out when most yellow and red cards are given. As expected, red cards tend to be given later.
 
-# In[9]:
+# In[12]:
 
 
 df_events[['EventMinute']] = df_events[['EventMinute']].apply(pd.to_numeric)
@@ -139,7 +173,7 @@ plt.show()
 # 
 # In this section we want to find out which team is given the fewest yellow cards per match on average. First we have to find out how many yellow cards a team was awarded. We have to create to dataframes as teams appear either as home or away team.
 
-# In[10]:
+# In[13]:
 
 
 df_yellow_cards = df_events[df_events.EventType == "Y"]
@@ -159,7 +193,7 @@ df_yellow_cards_count
 
 # Now we need the amount of matches per team to finally compute the average amount of yellow cards per match per team.
 
-# In[11]:
+# In[14]:
 
 
 df_home_matches = df_matches[["Home Team Name"]]
@@ -184,7 +218,7 @@ df_yellow_cards_teams
 
 # We see that some teams with only very few matches appear in both lists. These could be statistical outliers.
 
-# In[12]:
+# In[15]:
 
 
 plt.figure(figsize=(12,6))
@@ -202,7 +236,7 @@ plt.show()
 
 # Based on the previous observation we restrict ourselves to teams with at least 30 matches which are in total 21 teams. Germany is on rank 3.
 
-# In[13]:
+# In[16]:
 
 
 df_yellow_cards_reg_teams = df_yellow_cards_teams[df_yellow_cards_teams.MatchesTotal > 30]
@@ -220,7 +254,7 @@ plt.show()
 # 
 # Whether or not a game is a tie does not have an effect on the amount of red or yellow cards. However, if it is not a tie the winner are given less yellow and red cards.
 
-# In[14]:
+# In[17]:
 
 
 avg_yellow_of_winner = len(df_events.loc[(df_events['EventOfWinner'] == True) & (df_events['EventType'] == 'Y')])/num_matches_decision
@@ -270,7 +304,7 @@ ax.bar(ind + width, red_cards, width, color='r')
 plt.show()
 
 
-# # Predict Fouls
+# # Predict Yellow Cards
 # In this section we trained a model to predict the amount of yellow cards given in a match.
 # 
 # ## Initial Features for Regression
@@ -301,7 +335,7 @@ plt.show()
 # Additionally, attendance must be a numeric data type
 # 
 
-# In[31]:
+# In[18]:
 
 
 df_events_ohe = pd.concat([df_events, pd.get_dummies(df_events['EventType'])], axis=1)
@@ -317,7 +351,7 @@ df_events_ohe
 
 # Perform a group by to get sum of yellow cards
 
-# In[32]:
+# In[19]:
 
 
 f = {'HourGameStart':['mean'],
@@ -348,7 +382,7 @@ df_events_grp.columns = df_events_grp.columns.get_level_values(0)
 df_events_grp
 
 
-# In[33]:
+# In[20]:
 
 
 df_events_grp.columns
@@ -356,7 +390,7 @@ df_events_grp.columns
 
 # We simply use MinMaxScaler as preprocessing
 
-# In[34]:
+# In[21]:
 
 
 from sklearn.preprocessing import MinMaxScaler
@@ -372,7 +406,7 @@ df_events_grp[['HourGameStart','Year','GoalsTotal','GoalDifference','GoalDiffere
 # \frac{\displaystyle\sum\nolimits \left(\hat{y}_i- \overline{y}\right)^2}{\displaystyle\sum\nolimits \left(y_i - \overline{y}\right)^2}
 # \end{align}
 
-# In[35]:
+# In[22]:
 
 
 from sklearn.model_selection import train_test_split
@@ -424,7 +458,7 @@ print('BASE: Variance score: %.2f' % r2_score(y_test, y_base_pred))
 # 
 # All together F-statistic prob is low enough. Hence, all variables together can be considered significant.
 
-# In[36]:
+# In[23]:
 
 
 import statsmodels.api as sm
@@ -442,7 +476,7 @@ print(est2.summary())
 # 
 # The correlation with substitutions is not obvious. 
 
-# In[39]:
+# In[24]:
 
 
 from scipy.stats.stats import pearsonr  
@@ -454,7 +488,7 @@ print(pearsonr(df_events_grp['IH'],Y)) # half time substitutions
 
 # The correlation with year and substitutions can also be observed in a scatter plot. For penalty this does plot does not make sense as it is a binary decision. 
 
-# In[40]:
+# In[25]:
 
 
 import numpy as np
@@ -462,8 +496,12 @@ import matplotlib.pyplot as plt
 
 plt.figure()
 plt.plot(df_events_grp['Year'],Y, "o")
+plt.xlabel("Year (scaled)")
+plt.ylabel("Yellow Cards")
 plt.figure()
 plt.plot(df_events_grp['I'],Y, "o")
+plt.xlabel("Substitutions (scaled)")
+plt.ylabel("Yellow Cards")
 
 
 # We try several ways to increase the performance
@@ -474,7 +512,7 @@ plt.plot(df_events_grp['I'],Y, "o")
 # 
 # But first, why not remove the unnecessary features and make the model more robust?
 
-# In[41]:
+# In[26]:
 
 
 X2 = df_events_grp.loc[:, ['Year', 'Penalty', 'IH', 'I']]
@@ -512,7 +550,7 @@ print('BASE: Variance score: %.2f' % r2_score(y_test2, y_base_pred))
 # ## Attempt 1: Regularization
 # As mentioned above, regularization fails to improve the linear model. In this case we only tried ridge regression. One could also employ lasso regression etc. to regularize which have the effect of feature selection or lower variable scale respectively.
 
-# In[42]:
+# In[27]:
 
 
 from sklearn.linear_model import Ridge
@@ -530,7 +568,7 @@ print('REGULARIZATION: Variance score: %.2f' % r2_score(y_test, y_pred))
 # ## Attempt 2a: Try a regression tree
 # Just another regression model. Leafes of the tree contain values for the specific subspace.
 
-# In[43]:
+# In[28]:
 
 
 from sklearn.tree import DecisionTreeRegressor
@@ -563,7 +601,7 @@ print('DECISION TREE 2: Variance score: %.2f' % r2_score(y_test, y_pred_2))
 # 
 # Sounds fancy but actually just a vanilla multilayer perceptron with only two layers.
 
-# In[44]:
+# In[29]:
 
 
 from sklearn.neural_network import MLPRegressor
@@ -586,7 +624,7 @@ print('NEURAL NETWORK: Variance score: %.2f' % r2_score(y_test, y_pred))
 # ## Attempt 3: Add team as one hot encoding
 # We hot encode the teams of the specific match and hope to increase the accuracy
 
-# In[45]:
+# In[30]:
 
 
 df_teams_ohe = (pd.get_dummies(df_events['Home Team Initials'])+pd.get_dummies(df_events['Away Team Initials'])).fillna(value=0)
@@ -597,7 +635,7 @@ df_fouls.drop(['MatchID'], 1,inplace=True)
 df_fouls
 
 
-# In[46]:
+# In[31]:
 
 
 from sklearn.preprocessing import MinMaxScaler
@@ -607,7 +645,7 @@ df_fouls[['HourGameStart','Year','GoalsTotal','GoalDifference','GoalDifferenceHa
 
 # Unfortunately, adding the team did not improve the model performance. Probably due to shortage of data.
 
-# In[47]:
+# In[32]:
 
 
 from sklearn.model_selection import train_test_split
@@ -645,4 +683,171 @@ print("BASE: Mean squared error: %.2f"
       % mean_squared_error(y_test, y_base_pred))
 # zero for sure, just added for completeness
 print('BASE: Variance score: %.2f' % r2_score(y_test, y_base_pred))
+
+
+# # Predict Red Cards
+# Can we also predict whether a red card was given? This is a classification task.
+
+# In[33]:
+
+
+f = {'HourGameStart':['mean'],
+     #'Home Team Goals':['mean'], # not symmetric -> throw out
+     #'Away Team Goals':['mean'],
+     #'Half-time Home Goals':['mean'],
+     #'Half-time Away Goals':['mean'],
+     'Year':['mean'],
+     'Stage_1':['mean'],
+     'Stage_2':['mean'],
+     'Stage_3':['mean'],
+     'Stage_4':['mean'],
+     'Stage_5':['mean'],
+     'Stage_6':['mean'],
+     'GoalsTotal':['mean'],
+     'GoalDifference':['mean'],
+     'GoalDifferenceHalfTime':['mean'],
+     'DeltaGoals':['mean'],
+     'ExtraTime':['mean'],
+     'Penalty':['mean'],
+     'I':['sum'], #substitutions
+     'IH':['sum'], #substitutions half time
+     'Y':['sum'],
+     'R':['sum'],
+     'RSY':['sum']
+    }
+
+df_events_grp = df_events_ohe.groupby(['MatchID']).agg(f)
+df_events_grp.columns = df_events_grp.columns.get_level_values(0)
+
+# create column indicating whether red cards were given
+df_events_grp['R_total'] = df_events_grp.R + df_events_grp.RSY
+df_events_grp = df_events_grp.assign(R_flag = lambda x : x.R_total > 0)
+df_events_grp = df_events_grp.drop(columns=['R', 'RSY','R_total'])
+df_events_grp
+
+
+# The decision tree is unable to outperform the base model. With higher tree depths the train test gap increases. The trees heavily overfit.
+
+# In[34]:
+
+
+from sklearn import tree
+from sklearn.metrics import accuracy_score
+
+# train test split
+# linear regression to predict y 
+X = df_events_grp.loc[:, 'HourGameStart':'Y']
+Y = df_events_grp.loc[:, 'R_flag']
+
+# transform to numpy array
+X = X.as_matrix().astype(np.float)
+Y = Y.as_matrix().astype(np.float)
+
+# train/ test split
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.33, random_state=42)
+
+def decision_tree_accuracy(depth):
+    # fit decision tree
+    clf = tree.DecisionTreeClassifier(max_depth=depth)
+    clf = clf.fit(X_train, y_train)
+
+    # compute accuracy
+    y_pred = clf.predict(X_test)
+    score = clf.score(X_test, y_test)
+    
+    train_score = accuracy_score(clf.predict(X_train), y_train)
+    
+    return score, train_score
+
+# for comparison also compute accuracy for base model (always output zero)
+y_base_pred = np.zeros((len(y_test))) # zeros as most matches are without red cards
+base_score = accuracy_score(y_base_pred, y_test)
+
+dec_tree_accuracy = np.array([(i, decision_tree_accuracy(i)[0], decision_tree_accuracy(i)[1]) for i in range(1,15)])
+base_accuracy = np.array([base_score for i in range(1,15)])
+
+plt.figure(figsize=(12,6))
+
+plt.plot(dec_tree_accuracy[:,0], dec_tree_accuracy[:,1]*100, label="Decision Tree Test")
+plt.plot(dec_tree_accuracy[:,0], dec_tree_accuracy[:,2]*100, label="Decision Tree Train")
+plt.plot(dec_tree_accuracy[:,0], base_accuracy*100, label="Base")
+
+plt.legend()
+plt.title("Accuracies depending on tree depth")
+plt.xlabel("Decision tree depth")
+plt.ylabel("Accuracy (%)")
+
+plt.show()
+
+
+# A little less overfitting, but still unable to achieve a significantly higher accuracy: random forests.
+
+# In[35]:
+
+
+from sklearn.ensemble import RandomForestClassifier
+
+def random_forest_accuracy(depth):
+    # fit decision tree
+    clf = RandomForestClassifier(max_depth=depth, n_estimators=10)
+    clf = clf.fit(X_train, y_train)
+
+    # compute accuracy
+    y_pred = clf.predict(X_test)
+    score = clf.score(X_test, y_test)
+    
+    train_score = accuracy_score(clf.predict(X_train), y_train)
+    
+    return score, train_score
+
+rf_tree_accuracy = np.array([(i, random_forest_accuracy(i)[0], random_forest_accuracy(i)[1]) for i in range(1,15)])
+
+plt.figure(figsize=(12,6))
+
+plt.plot(rf_tree_accuracy[:,0], rf_tree_accuracy[:,1]*100, label="Random Forest Test")
+plt.plot(rf_tree_accuracy[:,0], rf_tree_accuracy[:,2]*100, label="Random Forest Train")
+plt.plot(rf_tree_accuracy[:,0], base_accuracy*100, label="Base")
+
+plt.legend()
+plt.title("Accuracies depending on tree depth")
+plt.xlabel("Decision tree depth")
+plt.ylabel("Accuracy (%)")
+
+plt.show()
+
+
+# k-NN does not perform significantly better either.
+
+# In[36]:
+
+
+from sklearn.neighbors import KNeighborsClassifier
+
+def knn_accuracy(depth):
+    # fit decision tree
+    clf = KNeighborsClassifier(depth)
+    clf = clf.fit(X_train, y_train)
+
+    # compute accuracy
+    y_pred = clf.predict(X_test)
+    score = clf.score(X_test, y_test)
+    
+    train_score = accuracy_score(clf.predict(X_train), y_train)
+    
+    return score, train_score
+
+knn_accuracy = np.array([(i, knn_accuracy(i)[0], knn_accuracy(i)[1]) for i in range(1,15)])
+
+plt.figure(figsize=(12,6))
+
+plt.plot(knn_accuracy[:,0], knn_accuracy[:,1]*100, label="k-NN Test")
+plt.plot(knn_accuracy[:,0], knn_accuracy[:,2]*100, label="k-NN Train")
+plt.plot(knn_accuracy[:,0], base_accuracy*100, label="Base")
+
+plt.legend()
+plt.title("Accuracies depending on k")
+plt.xlabel("k")
+plt.ylabel("Accuracy (%)")
+
+plt.show()
 
