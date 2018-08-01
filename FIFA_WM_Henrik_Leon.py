@@ -585,3 +585,9 @@ df_penalty_loosers.sort_values(by='Number of loses',ascending=False)
 df_penalty_loosers.set_index("Country").plot(kind="bar", color="r", title="Total penalty loses per team", figsize=(14,7), legend=False, fontsize=12)
 plt.show()
 
+
+# In[53]:
+
+
+test
+
