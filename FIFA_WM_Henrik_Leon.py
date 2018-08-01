@@ -588,7 +588,7 @@ plt.show()
 
 # # How many Goals per Worldcup?
 
-# In[1]:
+# In[53]:
 
 
 goals_per_match = df_events.groupby(['MatchID'])[['Year', 'Home Team Goals', 'Away Team Goals']].mean()
@@ -598,13 +598,9 @@ goals_per_world_cup.sum(1).plot()
 plt.show()
 
 
-# In[ ]:
+# # Okay seems like more goals occured lately, so lets check the average goals per game for each world cup
 
-
-# Okay seems like more goals occured lately, so lets check the average goals per game for each world cup
-
-
-# In[ ]:
+# In[54]:
 
 
 goals_per_match_ratio = df_events.groupby(['MatchID'])[['MatchID', 'Year', 'Home Team Goals', 'Away Team Goals']].mean()
@@ -619,20 +615,12 @@ goals_per_match_ratio.plot(kind='bar')
 plt.show()
 
 
-# In[ ]:
+# Well it seems that yes, the average number of goals per game increased since 1930 but lately the average was more or less consistent with some peaks in the 00´s
 
+# # Next up we ask ourself: has the goalkeeper ever shot a goal?
+# 
 
-# Well it seems that yes, the average number of goals per game increased since 1930
-# but lately the average was more or less consistent with some peaks in the 00´s
-
-
-# In[ ]:
-
-
-# Next up we ask ourself: has the goalkeeper ever shot a goal?
-
-
-# In[ ]:
+# In[55]:
 
 
 goal_keeper_goal = df_events.loc[(df_events['EventType'] == 'G') & (df_events['Position'] == 'GK')]
@@ -640,8 +628,39 @@ goal_keeper_goal = df_events.loc[(df_events['EventType'] == 'G') & (df_events['P
 print(goal_keeper_goal)
 
 
-# In[ ]:
+# # Unfortunately no goal keeper has ever shot a goal during world cup
+
+# # Next Question is: Does the team from from the country hosting the event perform better than otherwise?
+# 
+# # Therefore first take a look at the host and the finals for each world cup
+
+# In[59]:
 
 
-# Unfortunately no goal keeper has ever shot a goal during world cup
+df_events2 = pd.read_csv('data_prepared/events2.csv', sep=';').replace(np.nan, '', regex=True)
+
+host_and_winner = df_events2.loc[(df_events2['Stage'] == 'Final')]
+host_and_winner = host_and_winner[['Year', 'Host Team Name', 'Home Team Name', 'Home Team Goals', 'Away Team Name', 'Away Team Goals', 'GoldenGoal', 'Penalty', 'DecisionPenaltyAway', 'DecisionPenaltyHome']]
+host_and_winner = host_and_winner.drop_duplicates()
+def calcChamp(x):
+    if x['Penalty']:
+        return x['Home Team Name'] if x['DecisionPenaltyHome'] > x['DecisionPenaltyAway'] else x['Away Team Name']
+    else:
+        return x['Home Team Name'] if x['Home Team Goals'] > x['Away Team Goals'] else x['Away Team Name']
+host_and_winner['Champion'] = host_and_winner.apply(lambda x : calcChamp(x), axis=1)
+host_and_winner = host_and_winner[['Year', 'Host Team Name', 'Champion']]
+host_and_winner
+
+
+# # Ok has the host ever won the finals?
+
+# In[60]:
+
+
+host_won = host_and_winner.loc[(host_and_winner['Host Team Name'] == host_and_winner['Champion'])]
+print(host_won)
+num_host_won = len(host_won)
+num_world_cups = len(host_and_winner)
+print('That makes the Host win ' + repr(len(host_won)) + ' of ' + repr(len(host_and_winner)))
+print('Which is a quote of: ' + repr(float(num_host_won)/num_world_cups))
 
