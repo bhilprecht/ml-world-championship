@@ -8,6 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 plt.rcParams.update({'font.size': 15})
 
 #G=Goal, OG=Own Goal, Y=Yellow Card, R=Red Card, SY = Red Card by second yellow, P=Penalty, MP=Missed Penalty, I = Substitution In, O=Substitute Out, IH= In half time?
@@ -275,7 +276,7 @@ def calculateWorldCupStage(x):
     return 1 # ko phase
 
 
-# In[131]:
+# In[175]:
 
 
 df_relevant_events_truth = df_relevant_events
@@ -283,4 +284,136 @@ df_relevant_events_truth["DecisionPhase"] = df_relevant_events_truth.apply(calcu
 df_relevant_events_truth["WorldCupStage"] = df_relevant_events_truth.apply(calculateWorldCupStage, axis=1)
 
 df_relevant_events_truth
+
+
+# ## KNN
+
+# In[177]:
+
+
+# Normalization
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()
+
+
+df_relevant_events_truth[["WorldCupStage", "Home Team Goals", "Half-time Home Goals", "Away Team Goals", "Half-time Away Goals", "ExtraTime", "Penalty"]] = scaler.fit_transform(df_relevant_events_truth[["WorldCupStage", "Home Team Goals", "Half-time Home Goals", "Away Team Goals", "Half-time Away Goals", "ExtraTime", "Penalty"]])
+# Values
+x = np.array(df_relevant_events_truth[["WorldCupStage", "Home Team Goals", "Half-time Home Goals", "Away Team Goals", "Half-time Away Goals", "ExtraTime", "Penalty"]])
+
+# Labels
+y = np.array(df_relevant_events_truth["DecisionPhase"]) 
+
+
+# In[178]:
+
+
+# Split data
+from sklearn.cross_validation import train_test_split
+X_train, X_test, Y_train, Y_test = train_test_split(x, y, test_size=0.3, random_state=101)
+
+
+# In[179]:
+
+
+X_train, X_test, Y_train, Y_test
+
+
+# In[180]:
+
+
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+
+# fit decision tree
+clf = KNeighborsClassifier()
+clf = clf.fit(X_train, Y_train)
+
+# compute accuracy
+y_pred = clf.predict(X_test)
+score = clf.score(X_test, Y_test)
+
+train_score = accuracy_score(clf.predict(X_train), Y_train)
+
+
+# In[181]:
+
+
+train_score
+
+
+# In[182]:
+
+
+y_pred
+
+
+# In[183]:
+
+
+score
+
+
+# In[184]:
+
+
+# for comparison also compute accuracy for base model (always output zero)
+y_base_pred = np.full(shape = (len(Y_test)), fill_value=2) # two as most matches are decided in second half 
+base_score = accuracy_score(y_base_pred, Y_test)
+
+
+# In[185]:
+
+
+base_score
+
+
+# ## Decision Tree
+
+# In[209]:
+
+
+from sklearn import tree
+from sklearn.metrics import accuracy_score
+
+# fit decision tree
+clf = tree.DecisionTreeClassifier(max_depth = 7)
+clf = clf.fit(X_train, Y_train)
+
+# compute accuracy
+y_pred = clf.predict(X_test)
+score = clf.score(X_test, Y_test)
+
+train_score = accuracy_score(clf.predict(X_train), Y_train)
+
+
+# In[210]:
+
+
+y_pred
+
+
+# In[211]:
+
+
+score
+
+
+# In[212]:
+
+
+train_score
+
+
+# In[213]:
+
+
+import graphviz 
+dot_data = tree.export_graphviz(clf, out_file=None, 
+                         feature_names=["WorldCupStage", "Home Team Goals", "Half-time Home Goals", "Away Team Goals", "Half-time Away Goals", "ExtraTime", "Penalty"],  
+                         class_names=["Tie", "HT-Decision", "RG-Decision", "Extra Time", "Penalty"],  
+                         filled=True, rounded=True,  
+                         special_characters=True) 
+
+graph = graphviz.Source(dot_data)  
+graph
 
