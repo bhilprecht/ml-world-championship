@@ -586,8 +586,62 @@ df_penalty_loosers.set_index("Country").plot(kind="bar", color="r", title="Total
 plt.show()
 
 
-# In[53]:
+# # How many Goals per Worldcup?
+
+# In[1]:
 
 
-test
+goals_per_match = df_events.groupby(['MatchID'])[['Year', 'Home Team Goals', 'Away Team Goals']].mean()
+goals_per_world_cup = goals_per_match.groupby(['Year'])[['Home Team Goals', 'Away Team Goals']].sum()
+print(goals_per_world_cup.sum(1))
+goals_per_world_cup.sum(1).plot()
+plt.show()
+
+
+# In[ ]:
+
+
+# Okay seems like more goals occured lately, so lets check the average goals per game for each world cup
+
+
+# In[ ]:
+
+
+goals_per_match_ratio = df_events.groupby(['MatchID'])[['MatchID', 'Year', 'Home Team Goals', 'Away Team Goals']].mean()
+goals_per_match_ratio = goals_per_match_ratio.assign(total = lambda x: x['Home Team Goals'] + x['Away Team Goals'])
+goals_per_match_ratio = goals_per_match_ratio[['MatchID', 'Year', 'total']]
+goals_per_match_ratio = goals_per_match_ratio.groupby(['Year'])[['MatchID', 'total']].agg({'MatchID' : ['size'], 'total' : ['sum']})
+goals_per_match_ratio = goals_per_match_ratio.rename(columns={'size':'Number of Games', 'sum' : 'Amount of Goals'})
+goals_per_match_ratio = goals_per_match_ratio.assign(average = lambda x: (x['MatchID']['Number of Games'].astype(dtype=float) / x['total']['Amount of Goals'].astype(dtype=float)) )
+goals_per_match_ratio = goals_per_match_ratio[['average']].rename(columns={'average':'Average Goals per Game'})
+print(goals_per_match_ratio)
+goals_per_match_ratio.plot(kind='bar')
+plt.show()
+
+
+# In[ ]:
+
+
+# Well it seems that yes, the average number of goals per game increased since 1930
+# but lately the average was more or less consistent with some peaks in the 00´s
+
+
+# In[ ]:
+
+
+# Next up we ask ourself: has the goalkeeper ever shot a goal?
+
+
+# In[ ]:
+
+
+goal_keeper_goal = df_events.loc[(df_events['EventType'] == 'G') & (df_events['Position'] == 'GK')]
+
+print(goal_keeper_goal)
+
+
+# In[ ]:
+
+
+# Unfortunately no goal keeper has ever shot a goal during world cup
 

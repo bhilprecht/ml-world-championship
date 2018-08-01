@@ -68,5 +68,38 @@ print(goal_keeper_goal)
 
 # Next Question is: Does the team from from the country hosting the event perform better than otherwise?
 
-# Therefore first check the 
+# Therefore first take a look at the host and the finals for each world cup
+
+
+# In[6]:
+
+
+host_and_winner = df_events2.loc[(df_events2['Stage'] == 'Final')]
+host_and_winner = host_and_winner[['Year', 'Host Team Name', 'Home Team Name', 'Home Team Goals', 'Away Team Name', 'Away Team Goals', 'GoldenGoal', 'Penalty', 'DecisionPenaltyAway', 'DecisionPenaltyHome']]
+host_and_winner = host_and_winner.drop_duplicates()
+def calcChamp(x):
+    if x['Penalty']:
+        return x['Home Team Name'] if x['DecisionPenaltyHome'] > x['DecisionPenaltyAway'] else x['Away Team Name']
+    else:
+        return x['Home Team Name'] if x['Home Team Goals'] > x['Away Team Goals'] else x['Away Team Name']
+host_and_winner['Champion'] = host_and_winner.apply(lambda x : calcChamp(x), axis=1)
+host_and_winner = host_and_winner[['Year', 'Host Team Name', 'Champion']]
+host_and_winner
+
+
+# In[ ]:
+
+
+# ok has the host ever won the finals?
+
+
+# In[ ]:
+
+
+host_won = host_and_winner.loc[(host_and_winner['Host Team Name'] == host_and_winner['Champion'])]
+print(host_won)
+num_host_won = len(host_won)
+num_world_cups = len(host_and_winner)
+print('That makes the Host win ' + repr(len(host_won)) + ' of ' + repr(len(host_and_winner)))
+print('Which is a quote of: ' + repr(float(num_host_won)/num_world_cups))
 
