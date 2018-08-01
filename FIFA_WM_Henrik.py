@@ -22,7 +22,7 @@ df_penalties = pd.read_csv('data_prepared/penalties.csv', encoding='iso-8859-1',
 
 # # General information about Football World Cups
 
-# In[90]:
+# In[2]:
 
 
 df_cups.set_index('Year').plot(kind='bar', title="General World Cup Information", figsize=(14,7), legend=True, fontsize=12)
@@ -31,7 +31,7 @@ plt.show()
 
 # # Attendance per World Cup
 
-# In[95]:
+# In[3]:
 
 
 # Data preparation
@@ -43,7 +43,7 @@ df_cups_attendance.dtypes
 
 # ## Total Attendance per World Cup
 
-# In[73]:
+# In[4]:
 
 
 plt.figure(figsize=(12,6))
@@ -54,7 +54,7 @@ plt.show()
 
 # ## Average Attendance per World Cup
 
-# In[92]:
+# In[5]:
 
 
 df_avg_attendance = df_matches.groupby("Year")["Attendance"].mean().reset_index()
@@ -90,7 +90,7 @@ df_players_goals.dropna()
 
 # ## List of top scoring players
 
-# In[100]:
+# In[8]:
 
 
 # Display as list
@@ -103,7 +103,7 @@ df_players_goals.dropna()
 # df_test['EventType'].sort_values(ascending=False)
 
 
-# In[99]:
+# In[9]:
 
 
 f = {
@@ -121,7 +121,7 @@ plt.show()
 # 
 # The used dataset covers only penalty shoot-outs after regular time. Penalty shoot-outs were introduced in 1972.
 
-# In[11]:
+# In[ ]:
 
 
 # data preparation
@@ -134,7 +134,7 @@ df_penalties["Loser Penalty Goals"]  = df_penalties["Final Result"].str.split("-
 
 # ## Penalty overview
 
-# In[12]:
+# In[ ]:
 
 
 df_penalties
@@ -142,7 +142,7 @@ df_penalties
 
 # ## How many matches were dicided after penalty shoot-outs?
 
-# In[13]:
+# In[ ]:
 
 
 df_penalties[['Winner']].count()
@@ -152,7 +152,7 @@ df_penalties[['Winner']].count()
 
 # ## How many penalty matches by year?
 
-# In[87]:
+# In[ ]:
 
 
 df_penalties_by_year = df_penalties['Year'].value_counts().reset_index()
@@ -164,7 +164,7 @@ plt.show()
 
 # ## When decided a penalty shoot-out the world cup winner?
 
-# In[15]:
+# In[ ]:
 
 
 df_penalties[df_penalties['Round'] == 'Final']
@@ -174,7 +174,7 @@ df_penalties[df_penalties['Round'] == 'Final']
 
 # ## Which team is the most successful on penalties?
 
-# In[25]:
+# In[ ]:
 
 
 df_penalty_winners = df_penalties["Winner"].value_counts().reset_index()
@@ -182,7 +182,7 @@ df_penalty_winners.columns = ["Country","Number of wins"]
 df_penalty_winners.sort_values(by='Number of wins',ascending=False)
 
 
-# In[91]:
+# In[ ]:
 
 
 df_penalty_winners.set_index("Country").plot(kind="bar", color="g", title="Total penalty wins per team", figsize=(14,7), legend=False, fontsize=12)
@@ -191,7 +191,7 @@ plt.show()
 
 # ## Which team is the less successful on penalty?
 
-# In[93]:
+# In[ ]:
 
 
 df_penalty_loosers = df_penalties["Loser"].value_counts().reset_index()
@@ -199,7 +199,7 @@ df_penalty_loosers.columns = ["Country","Number of loses"]
 df_penalty_loosers.sort_values(by='Number of loses',ascending=False)
 
 
-# In[94]:
+# In[ ]:
 
 
 df_penalty_loosers.set_index("Country").plot(kind="bar", color="r", title="Total penalty loses per team", figsize=(14,7), legend=False, fontsize=12)
